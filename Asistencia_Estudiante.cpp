@@ -1,284 +1,419 @@
 #include <iostream>
-#include <vector>
 #include <string>
-#include <algorithm>  // para transform (normalizar texto)
-#include <limits>     // para limpiar buffer de cin
+#include <cctype>       // para toupper, tolower
+#include <limits>       // para limpiar buffer
 
 using namespace std;
 
-// --- Utilidades ---------------------------------------------------------------
+const int MAX_REGISTROS = 50;  // Tamano maximo del arreglo
 
-// Convierte un string a formato "Capitalized" (ej: "presente" ? "Presente")
-string capitalizar(string s) {
-    if (s.empty()) return s;
-    transform(s.begin(), s.end(), s.begin(), ::tolower);
-    s[0] = toupper(s[0]);
-    return s;
-}
-
-// Limpia el buffer de cin y evita loops infinitos con entradas inválidas
 void limpiarCin() {
     cin.clear();
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }
 
-// --- CLASE BASE: PERSONA -------------------------------------------------------
-
+//CLASE BASE: PERSONA
 class Persona {
     protected:
         int id;
         string nombre, apellido;   
     public:
-        Persona(int i, string nom, string ape= "")
-            : id(i), nombre(nom), apellido(ape){}
+        Persona(int i, string nom, string ape = "")
+            : id(i), nombre(nom), apellido(ape) {}
 
-        // Método abstracto (polimorfismo puro)
         virtual void registrarAsistencia() = 0;
-
         int getId() { return id; }
-
         string getNombre() { return nombre + " " + apellido; }
 };
 
-// --- CLASE ESTUDIANTE ----------------------------------------------------------
-
+//CLASE ESTUDIANTE (SIN matricula)
 class Estudiante : public Persona {
     private:
-        string matricula, carrera;
+        string carrera;
         int semestre;
     public:
-        Estudiante(int i, int sem , string nom, string ape, string matri, string carr= "")
-            : Persona(i, nom, ape), matricula(matri), carrera(carr), semestre(sem) {}
+        Estudiante(int i, int sem, string nom, string ape, string carr = "")
+            : Persona(i, nom, ape), carrera(carr), semestre(sem) {}
 
         void registrarAsistencia() override {
             cout << "Asistencia registrada para estudiante: " << getNombre() << endl;
         }
 };
 
-//ESTRUCTURA REGISTRO
-
+//ESTRUCTURA REGISTRO 
 struct Registro {
     int    idPersona;
     string nombre;
     string apellido;
-    string email;
     string carrera;
     int    semestre;
     string fecha;
-    string estado;    // Siempre guardado como "Presente" / "Ausente" / "Tarde"
+    string estado;    // "Presente" / "Ausente" / "Tarde"
 };
 
-// CLASE LISTA DE ASISTENCIA 
-
+//CLASE LISTA DE ASISTENCIA
 class ListaAsistencia {
     private:
-        vector<Registro> registros;
+        Registro registros[MAX_REGISTROS];
+        int cantidad;
+        int contadorID;  // Contador automatico 
 
-        // Valida que el estado sea uno de los tres valores permitidos
         bool estadoValido(const string &estado) {
-            return (estado == "Presente" || estado == "Ausente" || estado == "Tarde");
+            return (estado == "Presente" || estado == "Ausente" || estado == "Tarde" ||
+                    estado == "presente" || estado == "ausente" || estado == "tarde");
         }
 
     public:
-        // Insertar un nuevo registro
-        void insertar(int id, string nombre, string apellido, string carrera, int semestre, string fecha, string estado) {
-            estado = capitalizar(estado);
-            if (!estadoValido(estado)) {
-                cout << "Estado inválido. Use: Presente, Ausente o Tarde.\n";
-                return;
-            }
-            Registro r;
-            r.idPersona = id;
-            r.nombre    = nombre;
-            r.apellido  = apellido;
-            r.carrera   = carrera;
-            r.semestre  = semestre;
-            r.fecha     = fecha;
-            r.estado    = estado;
-            registros.push_back(r);
-            cout << "Registro insertado correctamente.\n";
+        ListaAsistencia() {
+            cantidad = 0;
+            contadorID = 1;  // Inicia en 1
         }
 
-        // Mostrar todos los registros
+        // INSERTAR
+        bool insertar(string nombre, string apellido, string carrera, 
+                      int semestre, string fecha, string estado) {
+            
+            if (cantidad >= MAX_REGISTROS) {
+                cout << "Error: Lista llena.\n";
+                return false;
+            }
+
+            if (contadorID > 50) {
+                cout << "Error: Se alcanzo el limite de IDs (1-50).\n";
+                return false;
+            }
+
+            if (!estadoValido(estado)) {
+                cout << "Estado invalido. Use: Presente, Ausente o Tarde.\n";
+                return false;
+            }
+
+            // Asignar ID 
+            registros[cantidad].idPersona = contadorID;
+            registros[cantidad].nombre    = nombre;
+            registros[cantidad].apellido  = apellido;
+            registros[cantidad].carrera   = carrera;
+            registros[cantidad].semestre  = semestre;
+            registros[cantidad].fecha     = fecha;
+            registros[cantidad].estado    = estado;
+            
+            cout << "Registro insertado correctamente con ID: " << contadorID << "\n";
+            contadorID++;
+            cantidad++;
+            return true;
+        }
+
+        // INSERTAR EN POSICION ESPECIFICA
+        bool insertarEnPosicion(int pos, string nombre, string apellido, 
+                                string carrera, int semestre, string fecha, string estado) {
+            
+            if (cantidad >= MAX_REGISTROS) {
+                cout << "Error: Lista llena.\n";
+                return false;
+            }
+            if (pos < 0 || pos > cantidad) {
+                cout << "Error: Posicion invalida.\n";
+                return false;
+            }
+            if (contadorID > 50) {
+                cout << "Error: Se alcanzo el limite de IDs (1-50).\n";
+                return false;
+            }
+
+            if (!estadoValido(estado)) {
+                cout << "Estado invalido.\n";
+                return false;
+            }
+
+            // Mover elementos a la derecha
+            for (int i = cantidad; i > pos; i--) {
+                registros[i] = registros[i - 1];
+            }
+
+            registros[pos].idPersona = contadorID;
+            registros[pos].nombre    = nombre;
+            registros[pos].apellido  = apellido;
+            registros[pos].carrera   = carrera;
+            registros[pos].semestre   = semestre;
+            registros[pos].fecha      = fecha;
+            registros[pos].estado     = estado;
+
+            cout << "Registro insertado en posicion " << pos << " con ID: " << contadorID << "\n";
+            contadorID++;
+            cantidad++;
+            return true;
+        }
+
+        // MOSTRAR TODOS
         void mostrar() {
-            if (registros.empty()) {
+            if (cantidad == 0) {
                 cout << "\nNo hay registros cargados.\n";
                 return;
             }
-            cout << "\n=== Todos los registros ===\n";
-            for (auto &r : registros) {
-                cout << "ID: "        << r.idPersona
-                     << " | Nombre: "  << r.nombre << " " << r.apellido
-                     << " | Carrera: " << r.carrera
-                     << " | Sem: "     << r.semestre
-                     << " | Fecha: "   << r.fecha
-                     << " | Estado: "  << r.estado << "\n";
+
+            cout << "\n=== Todos los registros (cantidad: " << cantidad << ") ===\n";
+            for (int i = 0; i < cantidad; i++) {
+                cout << "[" << i << "] "
+                     << "ID: " << registros[i].idPersona
+                     << " | Nombre: " << registros[i].nombre << " " << registros[i].apellido
+                     << " | Carrera: " << registros[i].carrera
+                     << " | Semestre: " << registros[i].semestre
+                     << " | Fecha: " << registros[i].fecha
+                     << " | Estado: " << registros[i].estado << "\n";
             }
         }
 
-        // Buscar registros por ID (puede haber varios del mismo ID en fechas distintas)
+        // BUSCAR POR ID
         void buscar(int id) {
+            if (id < 1 || id > 50) {
+                cout << "ID debe estar entre 1 y 100.\n";
+                return;
+            }
+
             bool encontrado = false;
-            for (auto &r : registros) {
-                if (r.idPersona == id) {
-                    cout << "Registro encontrado ->"
-                         << " ID: "       << r.idPersona
-                         << " | Nombre: "  << r.nombre << " " << r.apellido
-                         << " | Carrera: " << r.carrera
-                         << " | Sem: "     << r.semestre
-                         << " | Fecha: "   << r.fecha
-                         << " | Estado: "  << r.estado << "\n";
+            for (int i = 0; i < cantidad; i++) {
+                if (registros[i].idPersona == id) {
+                    cout << "Registro encontrado en posicion [" << i << "] ->"
+                         << " ID: " << registros[i].idPersona
+                         << " | Nombre: " << registros[i].nombre << " " << registros[i].apellido
+                         << " | Carrera: " << registros[i].carrera
+                         << " | Semestre: " << registros[i].semestre
+                         << " | Fecha: " << registros[i].fecha
+                         << " | Estado: " << registros[i].estado << "\n";
                     encontrado = true;
                 }
             }
-            if (!encontrado) cout << "No se encontró el registro.\n";
+            if (!encontrado) cout << "No se encontro el registro con ID: " << id << "\n";
         }
 
-        // Modificar el estado del primer registro que coincida con el ID
+        // MODIFICAR ESTADO
         void modificar(int id, string nuevoEstado) {
-            nuevoEstado = capitalizar(nuevoEstado);
-            if (!estadoValido(nuevoEstado)) {
-                cout << "Estado inválido. Use: Presente, Ausente o Tarde.\n";
+            if (id < 1 || id > 50) {
+                cout << "ID debe estar entre 1 y 100.\n";
                 return;
             }
-            for (auto &r : registros) {
-                if (r.idPersona == id) {
-                    r.estado = nuevoEstado;
-                    cout << "Registro modificado correctamente.\n";
-                    return;
-                }
-            }
-            cout << "No se encontró el registro.\n";
-        }
 
-        // Eliminar el primer registro que coincida con el ID
-        void eliminar(int id) {
-            for (size_t i = 0; i < registros.size(); i++) {
+            if (!estadoValido(nuevoEstado)) {
+                cout << "Estado invalido. Use: Presente, Ausente o Tarde.\n";
+                return;
+            }
+
+            for (int i = 0; i < cantidad; i++) {
                 if (registros[i].idPersona == id) {
-                    registros.erase(registros.begin() + i);
-                    cout << "Registro eliminado correctamente.\n";
+                    registros[i].estado = nuevoEstado;
+                    cout << "Registro modificado correctamente en posicion [" << i << "].\n";
                     return;
                 }
             }
-            cout << "No se encontró el registro.\n";
+            cout << "No se encontro el registro con ID: " << id << "\n";
         }
 
-        // Reporte final de conteos
+        // ELIMINAR POR ID
+        bool eliminar(int id) {
+            if (id < 1 || id > 50) {
+                cout << "ID debe estar entre 1 y 100.\n";
+                return false;
+            }
+
+            for (int i = 0; i < cantidad; i++) {
+                if (registros[i].idPersona == id) {
+                    cout << "Eliminando: " << registros[i].nombre << " " << registros[i].apellido << "\n";
+                    
+                    // Mover elementos a la izquierda
+                    for (int j = i; j < cantidad - 1; j++) {
+                        registros[j] = registros[j + 1];
+                    }
+                    
+                    cantidad--;
+                    cout << "Registro eliminado correctamente.\n";
+                    return true;
+                }
+            }
+            cout << "No se encontro el registro con ID: " << id << "\n";
+            return false;
+        }
+
+        // ELIMINAR POR POSICION
+        bool eliminarPorPosicion(int pos) {
+            if (pos < 0 || pos >= cantidad) {
+                cout << "Error: Posicion invalida.\n";
+                return false;
+            }
+
+            cout << "Eliminando posicion [" << pos << "]: " 
+                 << registros[pos].nombre << " " << registros[pos].apellido 
+                 << " (ID: " << registros[pos].idPersona << ")\n";
+
+            for (int i = pos; i < cantidad - 1; i++) {
+                registros[i] = registros[i + 1];
+            }
+
+            cantidad--;
+            cout << "Registro eliminado correctamente.\n";
+            return true;
+        }
+
+        // REPORTE FINAL
         void reporte() {
-            if (registros.empty()) {
+            if (cantidad == 0) {
                 cout << "\nNo hay registros para reportar.\n";
                 return;
             }
+
             int presentes = 0, ausentes = 0, tarde = 0;
-            for (auto &r : registros) {
-                if (r.estado == "Presente") presentes++;
-                else if (r.estado == "Ausente") ausentes++;
-                else if (r.estado == "Tarde")   tarde++;
+            
+            for (int i = 0; i < cantidad; i++) {
+                string est = registros[i].estado;
+                // Convertir a minusculas para comparar facil
+                for (char &c : est) c = tolower(c);
+                
+                if (est == "presente") presentes++;
+                else if (est == "ausente") ausentes++;
+                else if (est == "tarde") tarde++;
             }
+
             cout << "\n=== Reporte Final ===\n";
-            cout << "Total registros : " << registros.size() << "\n";
+            cout << "Total registros : " << cantidad << "\n";
+            cout << "IDs utilizados  : 1 - " << contadorID - 1 << "\n";
             cout << "Presentes       : " << presentes << "\n";
             cout << "Ausentes        : " << ausentes  << "\n";
             cout << "Tarde           : " << tarde     << "\n";
         }
+
+        int getCantidad() { return cantidad; }
+        int getUltimoID() { return contadorID - 1; }
 };
 
-// --- FUNCIÓN PRINCIPAL ---------------------------------------------------------
-
+// FUNCION PRINCIPAL
 int main() {
     ListaAsistencia lista;
 
-    // 10 registros iniciales
-    lista.insertar(1,  "Ana",    "Torres",    "Sistemas",    3, "12/03/2026", "Presente");
-    lista.insertar(2,  "Luis",   "Mendoza",   "Civil",       5, "12/03/2026", "Tarde");
-    lista.insertar(3,  "Maria",  "Lopez",  "Medicina",    2, "12/03/2026", "Ausente");
-    lista.insertar(4,  "Pedro",  "Guzman",  "Derecho",     4, "12/03/2026", "Presente");
-    lista.insertar(5,  "Sofia",  "Ramirez",  "Sistemas",    1, "12/03/2026", "Presente");
-    lista.insertar(6,  "Carlos", "Vega", "Industrial",  6, "12/03/2026", "Tarde");
-    lista.insertar(7,  "Laura",  "Diaz",  "Arquitectura",3, "12/03/2026", "Ausente");
-    lista.insertar(8,  "Jorge",  "Castro",  "Electronica", 2, "12/03/2026", "Presente");
-    lista.insertar(9,  "Elena",  "Mora",  "Sistemas",    4, "12/03/2026", "Presente");
-    lista.insertar(10, "Diego",  "Paredes",  "Civil",       7, "12/03/2026", "Tarde");
+    cout << "\n=== SISTEMA DE ASISTENCIA ===\n";
+
+    // 5 registros iniciales
+    cout << "\n--- Cargando registros ---\n";
+    lista.insertar("Ana",    "Torres",    "Sistemas",    3, "12/03/2026", "Presente");
+    lista.insertar("Luis",   "Mendoza",   "Civil",       5, "12/03/2026", "Tarde");
+    lista.insertar("Maria",  "Lopez",     "Medicina",    2, "12/03/2026", "Ausente");
+    lista.insertar("Pedro",  "Guzman",    "Derecho",     4, "12/03/2026", "Presente");
+    lista.insertar("Sofia",  "Ramirez",   "Sistemas",    1, "12/03/2026", "Presente");
 
     int opcion;
     do {
-        cout << "\n=== Menú Interactivo ===\n"
-             << "1. Registrar datos\n"
-             << "2. Mostrar todos los registros\n"
-             << "3. Buscar un registro\n"
-             << "4. Modificar un registro\n"
-             << "5. Eliminar un registro\n"
-             << "6. Generar reporte final\n"
-             << "7. Salir\n"
-             << "Seleccione una opción: ";
+        cout << "\n=== MENU PRINCIPAL ===\n"
+             << "1. Registrar nuevo estudiante\n"
+             << "2. Insertar en posicion especifica\n"
+             << "3. Mostrar todos los registros\n"
+             << "4. Buscar un registro por ID\n"
+             << "5. Modificar estado de un registro\n"
+             << "6. Eliminar un registro por ID\n"
+             << "7. Eliminar por posicion\n"
+             << "8. Generar reporte final\n"
+             << "9. Salir\n"
+             << "Seleccione una opcion: ";
 
-        // -- Validación de entrada del menú --
         if (!(cin >> opcion)) {
-            cout << "Entrada inválida. Ingrese un número del 1 al 7.\n";
+            cout << "Entrada invalida. Ingrese un numero.\n";
             limpiarCin();
-            opcion = 0;   // fuerza que el do-while continúe
             continue;
         }
 
         switch (opcion) {
             case 1: {
-                int id, semestre;
-                string nombre, apellido, email, carrera, fecha, estado;
-                cout << "Ingrese ID: ";
-                if (!(cin >> id)) { cout << "ID inválido.\n"; limpiarCin(); break; }
-                cout << "Ingrese nombre: ";
-                cin >> nombre;
-                cout << "Ingrese apellido: ";
-                cin >> apellido;
-                cout << "Ingrese carrera: ";
-                cin >> carrera;
-                cout << "Ingrese semestre: ";
-                if (!(cin >> semestre)) { cout << "Semestre inválido.\n"; limpiarCin(); break; }
-                cout << "Ingrese fecha (DD/MM/AAAA): ";
-                cin >> fecha;
-                cout << "Ingrese estado (Presente / Ausente / Tarde): ";
+                int semestre;
+                string nombre, apellido, carrera, fecha, estado;
+                cout << "Nombre: "; cin >> nombre;
+                cout << "Apellido: "; cin >> apellido;
+                cout << "Carrera: "; cin >> carrera;
+                cout << "Semestre: "; 
+                if (!(cin >> semestre)) { 
+                    cout << "Semestre invalido.\n"; 
+                    limpiarCin(); 
+                    break; 
+                }
+                cout << "Fecha (DD/MM/AAAA): "; cin >> fecha;
+                cout << "Estado (Presente/Ausente/Tarde): "; 
                 cin >> estado;
-                lista.insertar(id, nombre, apellido, carrera, semestre, fecha, estado);
+                lista.insertar(nombre, apellido, carrera, semestre, fecha, estado);
                 break;
             }
-            case 2:
+            case 2: {
+                int pos, semestre;
+                string nombre, apellido, carrera, fecha, estado;
+                cout << "Posicion (0 - " << lista.getCantidad() << "): "; 
+                if (!(cin >> pos)) { 
+                    limpiarCin(); 
+                    break; 
+                }
+                cout << "Nombre: "; cin >> nombre;
+                cout << "Apellido: "; cin >> apellido;
+                cout << "Carrera: "; cin >> carrera;
+                cout << "Semestre: "; 
+                if (!(cin >> semestre)) { 
+                    limpiarCin(); 
+                    break; 
+                }
+                cout << "Fecha: "; cin >> fecha;
+                cout << "Estado: "; cin >> estado;
+                lista.insertarEnPosicion(pos, nombre, apellido, carrera, semestre, fecha, estado);
+                break;
+            }
+            case 3:
                 lista.mostrar();
                 break;
-            case 3: {
-                int id;
-                cout << "Ingrese ID a buscar: ";
-                if (!(cin >> id)) { cout << "ID inválido.\n"; limpiarCin(); break; }
-                lista.buscar(id);
-                break;
-            }
             case 4: {
                 int id;
-                string nuevoEstado;
-                cout << "Ingrese ID a modificar: ";
-                if (!(cin >> id)) { cout << "ID inválido.\n"; limpiarCin(); break; }
-                cout << "Ingrese nuevo estado (Presente / Ausente / Tarde): ";
-                cin >> nuevoEstado;
-                lista.modificar(id, nuevoEstado);
+                cout << "ID a buscar (1-50): ";
+                if (!(cin >> id)) { 
+                    limpiarCin(); 
+                    break; 
+                }
+                lista.buscar(id);
                 break;
             }
             case 5: {
                 int id;
-                cout << "Ingrese ID a eliminar: ";
-                if (!(cin >> id)) { cout << "ID inválido.\n"; limpiarCin(); break; }
+                string estado;
+                cout << "ID a modificar (1-50): ";
+                if (!(cin >> id)) { 
+                    limpiarCin(); 
+                    break; 
+                }
+                cout << "Nuevo estado (Presente/Ausente/Tarde): ";
+                cin >> estado;
+                lista.modificar(id, estado);
+                break;
+            }
+            case 6: {
+                int id;
+                cout << "ID a eliminar (1-50): ";
+                if (!(cin >> id)) { 
+                    limpiarCin(); 
+                    break; 
+                }
                 lista.eliminar(id);
                 break;
             }
-            case 6:
+            case 7: {
+                int pos;
+                cout << "Posicion a eliminar (0 - " << lista.getCantidad() - 1 << "): ";
+                if (!(cin >> pos)) { 
+                    limpiarCin(); 
+                    break; 
+                }
+                lista.eliminarPorPosicion(pos);
+                break;
+            }
+            case 8:
                 lista.reporte();
                 break;
-            case 7:
+            case 9:
                 cout << "Saliendo del sistema...\n";
                 break;
             default:
-                cout << "Opción inválida. Ingrese un número del 1 al 7.\n";
+                cout << "Opcion invalida. Ingrese 1-9.\n";
         }
-    } while (opcion != 7);
+    } while (opcion != 9);
 
     return 0;
 }
-
